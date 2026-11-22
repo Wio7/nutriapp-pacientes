@@ -275,8 +275,8 @@ BEGIN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'CODIGO_INVALIDO');
   END IF;
 
-  -- Token aleatorio de 32 bytes (pgcrypto vive en el esquema extensions en Supabase)
-  v_token := encode(extensions.gen_random_bytes(32), 'hex');
+  -- Token aleatorio: 2 UUID v4 (244 bits al azar) pasados por sha256. No depende de pgcrypto.
+  v_token := encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text, 'UTF8')), 'hex');
 
   UPDATE public.nutri_patient_access
   SET token_hash = encode(sha256(convert_to(v_token, 'UTF8')), 'hex'),
