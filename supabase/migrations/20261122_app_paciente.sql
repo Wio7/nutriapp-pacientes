@@ -1,7 +1,8 @@
 -- ====================================================================
 -- APP DEL PACIENTE — NUTRIAPP
 -- Migración: 20261122_app_paciente.sql
--- NO ejecutar directamente: Aurex revisa antes de aplicar.
+-- Revisada por Aurex y probada en Postgres 15 (2026-11-22). Se puede correr más de una vez.
+-- Ejecutar en el SQL Editor del Supabase de WIOCRM, después de las migraciones de nutricion-app.
 -- ====================================================================
 
 -- ----------------------------------------------------------------
