@@ -1,9 +1,16 @@
-'use server';
+import 'server-only';
 
 import { cookies } from 'next/headers';
 
+// Solo servidor. No usar 'use server': convertiría estas funciones en acciones que el navegador puede llamar.
 const COOKIE = 'nutri_pac_token';
-const OPTS = { httpOnly: true, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 90 } as const;
+const OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 90,
+} as const;
 
 export async function getToken(): Promise<string | null> {
   const store = await cookies();

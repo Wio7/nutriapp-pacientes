@@ -1,3 +1,4 @@
+import { hoyLima } from '@/lib/fecha';
 import { getToken } from '@/lib/token';
 import { DEMO_MODE, DEMO_COMIDAS_HOY, DEMO_PACIENTE } from '@/lib/demo';
 import { TarjetaComidaWrapper } from './tarjeta-comida-wrapper';
@@ -17,11 +18,12 @@ export default async function HoyPage() {
   const token = await getToken();
   const fechaActual = new Date();
   const hoyTexto = fechaActual.toLocaleDateString('es-PE', {
+    timeZone: 'America/Lima',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
-  const fechaIso = fechaActual.toISOString().slice(0, 10);
+  const fechaIso = hoyLima();
 
   interface ComidaItem {
     item_id: string;
@@ -81,7 +83,7 @@ export default async function HoyPage() {
         <div>
           <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
             <Calendar className="h-4 w-4 text-emerald-600" />
-            <span className="capitalize">{hoyTexto}</span>
+            <span className="inline-block first-letter:uppercase">{hoyTexto}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Comidas de hoy
@@ -116,6 +118,7 @@ export default async function HoyPage() {
             <TarjetaComidaWrapper
               key={c.item_id}
               itemId={c.item_id}
+              tiempoClave={c.tiempo_comida}
               tiempo={NOMBRES_TIEMPO[c.tiempo_comida] || c.tiempo_comida}
               hora={c.hora || HORAS_DEFECTO[c.tiempo_comida] || ''}
               platoNombre={c.plato_nombre}

@@ -1,3 +1,4 @@
+import { hoyLima } from '@/lib/fecha';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getToken } from '@/lib/token';
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.rpc('nutri_paciente_registrar_peso', {
       p_token: token,
       p_peso_kg: peso_kg,
-      p_fecha: fecha || new Date().toISOString().slice(0, 10),
+      p_fecha: fecha || hoyLima(),
     });
 
     if (error) {

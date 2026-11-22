@@ -1,3 +1,4 @@
+import { hoyLima } from '@/lib/fecha';
 import { getToken } from '@/lib/token';
 import { DEMO_MODE, DEMO_RUTINA } from '@/lib/demo';
 import { RutinaCliente } from './rutina-cliente';
@@ -29,7 +30,7 @@ export default async function RutinaPage() {
     datos = await getRutina(token);
   }
 
-  const fechaIso = new Date().toISOString().slice(0, 10);
+  const fechaIso = hoyLima();
 
   return (
     <div className="space-y-6">

@@ -1,51 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { setToken } from '@/lib/token';
+import { normalizarCelular } from '@/lib/celular';
+
+const MENSAJES: Record<string, string> = {
+  DATOS_INVALIDOS: 'Revisa tu celular (9 dígitos) y tu código (6 dígitos).',
+  CODIGO_INVALIDO: 'El celular o el código no coinciden. Revisa el mensaje de Camilo.',
+  LIMITE_INTENTOS: 'Demasiados intentos. Espera 15 minutos y vuelve a probar.',
+};
 
 export async function POST(req: NextRequest) {
   try {
     const { celular, codigo } = await req.json();
+    const accountId = process.env.NEXT_PUBLIC_WIOCRM_ACCOUNT_ID;
+    if (!accountId) throw new Error('Falta NEXT_PUBLIC_WIOCRM_ACCOUNT_ID');
 
-    if (!celular || !codigo) {
-      return NextResponse.json(
-        { error: 'Celular y código son requeridos' },
-        { status: 400 }
-      );
-    }
-
-    const accountId = process.env.NEXT_PUBLIC_WIOCRM_ACCOUNT_ID || '88cf5ef8-5803-461b-b0c3-ed8905977337';
-
-    const { data: token, error } = await supabase.rpc('nutri_paciente_entrar', {
+    const { data, error } = await supabase.rpc('nutri_paciente_entrar', {
       p_account_id: accountId,
-      p_celular: celular,
-      p_codigo: codigo,
+      p_celular: normalizarCelular(String(celular ?? '')),
+      p_codigo: String(codigo ?? '').replace(/\D/g, ''),
     });
+    if (error) throw error;
 
-    if (error) {
-      const msg = error.message || '';
-      let codigoError = 'ERROR_GENERAL';
-      if (msg.includes('CELULAR_NO_REGISTRADO')) codigoError = 'CELULAR_NO_REGISTRADO';
-      else if (msg.includes('CODIGO_INVALIDO')) codigoError = 'CODIGO_INVALIDO';
-      else if (msg.includes('LIMITE_INTENTOS')) codigoError = 'LIMITE_INTENTOS';
-
+    if (!data?.ok || !data.token) {
+      const codigoError = String(data?.error ?? 'DATOS_INVALIDOS');
       return NextResponse.json(
-        { error: error.message, codigo: codigoError },
-        { status: 401 }
+        { error: MENSAJES[codigoError] ?? MENSAJES.DATOS_INVALIDOS, codigo: codigoError },
+        { status: codigoError === 'LIMITE_INTENTOS' ? 429 : 401 }
       );
     }
 
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No se generó token de acceso', codigo: 'ERROR_TOKEN' },
-        { status: 500 }
-      );
-    }
-
-    await setToken(token);
-
+    await setToken(data.token);
     return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    const mensaje = err instanceof Error ? err.message : 'Error inesperado';
-    return NextResponse.json({ error: mensaje }, { status: 500 });
+  } catch (err) {
+    console.error('Error en /api/entrar:', err);
+    return NextResponse.json({ error: 'No pudimos conectarnos. Inténtalo de nuevo.' }, { status: 500 });
   }
 }

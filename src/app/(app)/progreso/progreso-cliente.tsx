@@ -1,5 +1,6 @@
 'use client';
 
+import { hoyLima } from '@/lib/fecha';
 import { useState } from 'react';
 import { GraficoPeso } from '@/components/grafico-peso';
 import { Boton, Tarjeta, Aviso } from '@/components/ui';
@@ -44,7 +45,7 @@ export function ProgresoCliente({ datos }: Props) {
 
     setGuardando(true);
     try {
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = hoyLima();
       if (DEMO_MODE) {
         setPesos(prev => [...prev, { fecha: hoy, peso_kg: kg }]);
         setMensajeExito(true);

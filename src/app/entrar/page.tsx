@@ -42,7 +42,7 @@ export default function EntrarPage() {
         if (!res.ok) {
           const msgs: Record<string, string> = {
             CELULAR_NO_REGISTRADO: 'Ese número no está registrado. Escríbele a Camilo para que te agregue.',
-            CODIGO_INVALIDO: 'Código incorrecto. Verifica el código de 6 dígitos que te dio Camilo.',
+            CODIGO_INVALIDO: 'El celular o el código no coinciden. Revisa el mensaje de Camilo.',
             LIMITE_INTENTOS: 'Demasiados intentos. Espera 15 minutos e inténtalo de nuevo.',
           };
           setError(msgs[json.codigo] ?? json.error ?? 'No pudimos ingresar. Inténtalo de nuevo.');

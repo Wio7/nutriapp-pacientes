@@ -28,19 +28,38 @@ export function TarjetaComida({ itemId, tiempo, hora, platoNombre, medidaCasera,
   const [abierto, setAbierto] = useState(false);
   const [nota, setNota] = useState('');
   const [cargando, setCargando] = useState<EstadoFoodLog | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null);
 
   const estadoInfo = ESTADOS.find(e => e.id === estadoActual);
 
   const marcar = async (estado: EstadoFoodLog) => {
     setCargando(estado);
-    try { await onMarcar(estado, nota || undefined); }
-    finally { setCargando(null); setAbierto(false); }
+    setAviso(null);
+    try {
+      await onMarcar(estado, nota || undefined);
+      setAbierto(false);
+    } catch (err) {
+      setAviso({ texto: err instanceof Error ? err.message : 'No se pudo guardar.', error: true });
+    } finally {
+      setCargando(null);
+    }
   };
 
   const subirFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
+    e.target.value = '';
     if (!archivo) return;
-    await onFoto(archivo);
+    setSubiendo(true);
+    setAviso(null);
+    try {
+      await onFoto(archivo);
+      setAviso({ texto: 'Foto recibida', error: false });
+    } catch (err) {
+      setAviso({ texto: err instanceof Error ? err.message : 'No se pudo subir la foto.', error: true });
+    } finally {
+      setSubiendo(false);
+    }
   };
 
   return (
@@ -87,12 +106,17 @@ export function TarjetaComida({ itemId, tiempo, hora, platoNombre, medidaCasera,
             rows={2}
             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/30 resize-none"
           />
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-emerald-700 font-medium hover:underline">
+          <label className={`flex items-center gap-2 text-sm text-emerald-700 font-medium ${subiendo ? 'opacity-60' : 'cursor-pointer hover:underline'}`}>
             <Camera className="h-4 w-4" />
-            {fotoSubida ? 'Cambiar foto' : 'Agregar foto'}
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={subirFoto} />
+            {subiendo ? 'Subiendo foto...' : fotoSubida ? 'Cambiar foto' : 'Agregar foto'}
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={subirFoto} disabled={subiendo} />
           </label>
         </div>
+      )}
+      {aviso && (
+        <p role="status" className={`mt-2 text-sm font-medium ${aviso.error ? 'text-red-600' : 'text-emerald-700'}`}>
+          {aviso.texto}
+        </p>
       )}
     </Tarjeta>
   );

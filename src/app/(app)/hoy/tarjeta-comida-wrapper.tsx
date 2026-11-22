@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { TarjetaComida } from '@/components/tarjeta-comida';
 import type { EstadoFoodLog } from '@/lib/nutricion/types';
 import { DEMO_MODE } from '@/lib/demo';
 
 interface Props {
   itemId: string;
+  /** Clave del tiempo de comida (desayuno, media_manana, ...). `tiempo` es solo el texto que se muestra. */
+  tiempoClave: string;
   tiempo: string;
   hora: string;
   platoNombre: string;
@@ -17,23 +20,33 @@ interface Props {
   fecha: string;
 }
 
+async function revisar(res: Response) {
+  if (res.ok) return;
+  const json = await res.json().catch(() => null);
+  throw new Error(json?.error || 'No se pudo guardar. Revisa tu conexión.');
+}
+
 export function TarjetaComidaWrapper(props: Props) {
+  const router = useRouter();
+
   const marcar = useCallback(
     async (estado: EstadoFoodLog, nota?: string) => {
       if (DEMO_MODE) return;
-      await fetch('/api/registrar-comida', {
+      const res = await fetch('/api/registrar-comida', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fecha: props.fecha,
-          tiempo_comida: props.itemId.split('-')[0] || 'desayuno',
+          tiempo_comida: props.tiempoClave,
           item_plan_id: props.itemId,
           estado,
           nota,
         }),
       });
+      await revisar(res);
+      router.refresh();
     },
-    [props.fecha, props.itemId]
+    [props.fecha, props.itemId, props.tiempoClave, router]
   );
 
   const foto = useCallback(
@@ -45,17 +58,13 @@ export function TarjetaComidaWrapper(props: Props) {
 
       const form = new FormData();
       form.append('foto', comprimida);
-      form.append('item_id', props.itemId);
-      form.append('fecha', props.fecha);
-      form.append('tiempo_comida', props.itemId.split('-')[0] || 'desayuno');
-      form.append('plato_nombre', props.platoNombre);
+      form.append('tiempo_comida', props.tiempoClave);
 
-      await fetch('/api/fotos', {
-        method: 'POST',
-        body: form,
-      });
+      const res = await fetch('/api/fotos', { method: 'POST', body: form });
+      await revisar(res);
+      router.refresh();
     },
-    [props.fecha, props.itemId, props.platoNombre]
+    [props.tiempoClave, router]
   );
 
   return <TarjetaComida {...props} onMarcar={marcar} onFoto={foto} />;

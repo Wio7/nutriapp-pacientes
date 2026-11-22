@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import {
   LineChart,
   Line,
@@ -17,11 +17,12 @@ interface PuntoPeso {
 }
 
 export function GraficoPeso({ datos }: { datos: PuntoPeso[] }) {
-  const [montado, setMontado] = useState(false);
-
-  useEffect(() => {
-    setMontado(true);
-  }, []);
+  // Recharts solo dibuja en el navegador: en el servidor `montado` es false.
+  const montado = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   if (!datos || datos.length === 0) {
     return (

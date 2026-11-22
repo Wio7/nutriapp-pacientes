@@ -1,8 +1,39 @@
-import OpenAI from 'openai';
 import type { RevisionIA } from '../nutricion/types';
 
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
+
+type BloqueContenido =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
+/**
+ * Llama a /chat/completions de DeepSeek (formato compatible con OpenAI) sin SDK.
+ * Modelo con visión verificado el 2026-11-22 en https://api-docs.deepseek.com/guides/vision: "deepseek-flash".
+ */
+async function llamarDeepSeek(params: {
+  contenido: string | BloqueContenido[];
+  maxTokens: number;
+  temperatura: number;
+}): Promise<string> {
+  if (!DEEPSEEK_API_KEY) throw new Error('SIN_CLAVE_DEEPSEEK');
+  const res = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
+    body: JSON.stringify({
+      model: DEEPSEEK_MODELO_VISION,
+      messages: [{ role: 'user', content: params.contenido }],
+      max_tokens: params.maxTokens,
+      temperature: params.temperatura,
+    }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!res.ok) throw new Error(`DeepSeek respondió ${res.status}`);
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const texto = json.choices?.[0]?.message?.content?.trim();
+  if (!texto) throw new Error('DeepSeek devolvió una respuesta vacía');
+  return texto;
+}
 export const DEEPSEEK_MODELO_VISION = process.env.DEEPSEEK_MODELO_VISION || 'deepseek-flash';
 export const IA_TOPE_FOTOS_MES = parseInt(process.env.IA_TOPE_FOTOS_MES || '10000', 10);
 export const MAX_FOTOS_PACIENTE_DIA = 6;
@@ -50,7 +81,7 @@ export function validarTopesIA(params: {
 /**
  * Parsea y normaliza la respuesta JSON de DeepSeek Vision.
  */
-export function parsearRespuestaVision(texto: string): RevisionIA {
+export function parsearRespuestaVision(texto: string): RevisionIA | null {
   try {
     let limpio = texto.trim();
     // Remover bloques markdown ```json ... ``` si los tuviera
@@ -71,12 +102,8 @@ export function parsearRespuestaVision(texto: string): RevisionIA {
       comentario: String(json.comentario || 'Foto recibida para revisión.'),
     };
   } catch {
-    return {
-      que_se_ve: 'Foto de comida',
-      coincide: 'parcial',
-      kcal_aprox: 0,
-      comentario: 'Foto recibida para revisión del nutricionista.',
-    };
+    // Sin JSON válido no se inventa una revisión: la foto queda como "fallida" para que Camilo la mire.
+    return null;
   }
 }
 
@@ -88,21 +115,7 @@ export async function revisarFotoConDeepSeek(params: {
   mimeType: string;
   platoPlaneado: string;
   tiempoComida: string;
-}): Promise<RevisionIA> {
-  if (!DEEPSEEK_API_KEY) {
-    return {
-      que_se_ve: 'Plato registrado',
-      coincide: 'si',
-      kcal_aprox: 0,
-      comentario: 'Foto almacenada (IA en modo sin clave).',
-    };
-  }
-
-  const client = new OpenAI({
-    apiKey: DEEPSEEK_API_KEY,
-    baseURL: DEEPSEEK_BASE_URL,
-  });
-
+}): Promise<RevisionIA | null> {
   const prompt = `Analiza esta foto de comida de un paciente en Perú.
 Tiempo de comida: ${params.tiempoComida}
 Plato planeado: "${params.platoPlaneado}"
@@ -115,27 +128,14 @@ Responde ÚNICAMENTE con un objeto JSON válido con este esquema exacto, sin exp
   "comentario": "frase corta técnica descriptiva (máx 15 palabras)"
 }`;
 
-  const response = await client.chat.completions.create({
-    model: DEEPSEEK_MODELO_VISION,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${params.mimeType};base64,${params.base64Imagen}`,
-            },
-          },
-        ],
-      },
+  const contenido = await llamarDeepSeek({
+    contenido: [
+      { type: 'text', text: prompt },
+      { type: 'image_url', image_url: { url: `data:${params.mimeType};base64,${params.base64Imagen}` } },
     ],
-    max_tokens: 250,
-    temperature: 0.2,
+    maxTokens: 250,
+    temperatura: 0.2,
   });
-
-  const contenido = response.choices[0]?.message?.content || '{}';
   return parsearRespuestaVision(contenido);
 }
 
@@ -193,15 +193,6 @@ export async function redactarResumenMesConDeepSeek(
 ): Promise<string> {
   const textoDefault = `¡Gran esfuerzo este mes, ${nombrePaciente}! Cumpliste con el ${metricas.pctCumplimiento}% de tus comidas y completaste ${metricas.diasRutinaCumplidos} días de tu rutina. Tu peso varió ${metricas.cambioPesoKg > 0 ? '+' : ''}${metricas.cambioPesoKg} kg. Sigue así con Camilo en tu próximo ciclo.`;
 
-  if (!DEEPSEEK_API_KEY) {
-    return textoDefault;
-  }
-
-  const client = new OpenAI({
-    apiKey: DEEPSEEK_API_KEY,
-    baseURL: DEEPSEEK_BASE_URL,
-  });
-
   const prompt = `Eres el asistente de redacción del nutricionista Camilo Villafranca (Perú).
 Escribe un resumen mensual para el paciente ${nombrePaciente} en español de Perú, tuteo, tono motivador y empático.
 Máximo entre 3 y 5 frases.
@@ -218,16 +209,10 @@ REGLAS ESTRICTAS:
 - Termina invitándolo amablemente a seguir con su siguiente ciclo junto a Camilo.`;
 
   try {
-    const response = await client.chat.completions.create({
-      model: DEEPSEEK_MODELO_VISION,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 350,
-      temperature: 0.6,
-    });
-
-    const respuesta = response.choices[0]?.message?.content?.trim();
-    return respuesta || textoDefault;
+    const respuesta = await llamarDeepSeek({ contenido: prompt, maxTokens: 350, temperatura: 0.6 });
+    return respuesta.slice(0, 1500);
   } catch {
+    // Sin clave o si DeepSeek falla, queda el texto armado solo con los números.
     return textoDefault;
   }
 }
