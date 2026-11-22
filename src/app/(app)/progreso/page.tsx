@@ -1,6 +1,7 @@
 import { getToken } from '@/lib/token';
 import { DEMO_MODE, DEMO_PESOS } from '@/lib/demo';
 import { ProgresoCliente } from './progreso-cliente';
+import { Encabezado } from '@/components/visual';
 
 async function getProgreso(token: string) {
   try {
@@ -32,15 +33,8 @@ export default async function ProgresoPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Tu progreso
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Línea de tiempo de tus avances, peso y cumplimiento.
-        </p>
-      </div>
+    <div className="space-y-5 md:space-y-6">
+      <Encabezado emoji="📈" titulo="Tu progreso" subtitulo="Tu peso y cuánto vas cumpliendo, semana a semana" tono="azul" />
 
       <ProgresoCliente datos={datos} />
     </div>

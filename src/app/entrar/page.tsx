@@ -60,13 +60,14 @@ export default function EntrarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f9f5] flex flex-col items-center justify-center px-4 py-8">
+    <div className="fondo-app min-h-screen flex flex-col items-center justify-center px-4 py-8">
       {/* Vista Móvil */}
       <div className="w-full max-w-sm space-y-6 md:hidden">
         <div className="text-center">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-700 text-white text-2xl font-bold mb-3 shadow-sm">
-            N
+          <div aria-hidden className="mb-3 inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 text-4xl shadow-lg shadow-emerald-900/15">
+            🥗
           </div>
+          <p className="mb-2 text-2xl" aria-hidden>🥑 🍓 🥦 🍳 🍎</p>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">NutriApp</h1>
           <p className="text-slate-600 text-sm mt-1">
             Ingresa con tu celular y el código de 6 dígitos que te dio Camilo.
@@ -148,9 +149,10 @@ export default function EntrarPage() {
       {/* Vista Computadora */}
       <div className="hidden md:flex gap-12 items-center max-w-4xl w-full">
         <div className="flex-1 space-y-4">
-          <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-700 text-white text-3xl font-bold shadow-md">
-            N
+          <div aria-hidden className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 text-4xl shadow-lg shadow-emerald-900/15">
+            🥗
           </div>
+          <p className="text-3xl" aria-hidden>🥑 🍓 🥦 🍳 🍎</p>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
             NutriApp Pacientes
           </h1>

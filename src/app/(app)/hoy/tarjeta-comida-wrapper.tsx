@@ -15,6 +15,8 @@ interface Props {
   platoNombre: string;
   medidaCasera?: string;
   calorias?: number;
+  fotoPlato?: string | null;
+  esSiguiente?: boolean;
   estadoActual: EstadoFoodLog | null;
   fotoSubida: boolean;
   fecha: string;

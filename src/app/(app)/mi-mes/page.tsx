@@ -1,6 +1,7 @@
 import { getToken } from '@/lib/token';
 import { DEMO_MODE, DEMO_PACIENTE } from '@/lib/demo';
 import { MiMesCliente } from './mi-mes-cliente';
+import { Encabezado } from '@/components/visual';
 
 async function getMiMes(token: string) {
   try {
@@ -45,12 +46,7 @@ export default async function MiMesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Mi mes
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Cierre de ciclo de 30 días, balance y renovación de tu plan.
-        </p>
+        <Encabezado emoji="🗓️" titulo="Mi mes" subtitulo="Cómo te fue en tus 30 días y tu siguiente plan" tono="verde" />
       </div>
 
       <MiMesCliente datos={datos} />

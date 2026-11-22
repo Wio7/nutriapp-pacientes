@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Circle, Flame, Timer, RefreshCw } from 'lucide-react';
-import { Boton, Tarjeta, Aviso } from '@/components/ui';
+import { Loader2 } from 'lucide-react';
+import { Aviso } from '@/components/ui';
 import { DEMO_MODE } from '@/lib/demo';
 
-const NOMBRES_NIVEL: Record<string, string> = {
-  nivel_cero: 'Nivel cero (adaptación)',
-  principiante: 'Principiante',
-  con_experiencia: 'Con experiencia',
-  avanzado: 'Avanzado',
+const NIVELES: Record<string, { nombre: string; emoji: string }> = {
+  nivel_cero: { nombre: 'Nivel cero', emoji: '🌱' },
+  principiante: { nombre: 'Principiante', emoji: '🚶' },
+  con_experiencia: { nombre: 'Con experiencia', emoji: '🏃' },
+  avanzado: { nombre: 'Avanzado', emoji: '🔥' },
 };
 
 interface Ejercicio {
@@ -30,28 +30,47 @@ interface DatosRutina {
   hecho_hoy?: boolean;
 }
 
+/** Emoji según el nombre del ejercicio, para reconocerlo de un vistazo. */
+function emojiEjercicio(nombre: string): string {
+  const n = nombre.toLowerCase();
+  if (/camin/.test(n)) return '🚶';
+  if (/trot|corr/.test(n)) return '🏃';
+  if (/bici|cicl/.test(n)) return '🚴';
+  if (/sentadill|zancad|pierna/.test(n)) return '🦵';
+  if (/flexi|brazo|push/.test(n)) return '💪';
+  if (/plancha|abdom|core/.test(n)) return '🧘';
+  if (/salt|burpee|jump/.test(n)) return '🤸';
+  if (/estir|movilid/.test(n)) return '🙆';
+  if (/nad/.test(n)) return '🏊';
+  return '🏋️';
+}
+
+const COLORES = ['bg-orange-100', 'bg-amber-100', 'bg-rose-100', 'bg-lime-100', 'bg-sky-100', 'bg-violet-100'];
+
 export function RutinaCliente({ datos, fecha }: { datos: DatosRutina | null; fecha: string }) {
   const [hecho, setHecho] = useState(datos?.hecho_hoy ?? false);
   const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
 
   if (!datos?.template?.exercises?.length) {
     return (
       <Aviso tipo="info">
-        Camilo aún no ha cargado la plantilla de rutina para tu nivel. Vuelve a consultar pronto.
+        Camilo aún no ha cargado la rutina para tu nivel. Vuelve a mirar pronto.
       </Aviso>
     );
   }
 
   const ejercicios = datos.template.exercises;
-  const nivelNombre = NOMBRES_NIVEL[datos.nivel || ''] || datos.nivel || 'Principiante';
+  const nivel = NIVELES[datos.nivel || ''] ?? { nombre: datos.nivel || 'Principiante', emoji: '🚶' };
+  const dias = datos.template.days_per_week;
 
   const toggleMarcar = async () => {
     if (DEMO_MODE) {
       setHecho(h => !h);
       return;
     }
-
     setCargando(true);
+    setError('');
     try {
       const nuevoEstado = !hecho;
       const res = await fetch('/api/marcar-rutina', {
@@ -59,9 +78,8 @@ export function RutinaCliente({ datos, fecha }: { datos: DatosRutina | null; fec
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fecha, hecho: nuevoEstado }),
       });
-      if (res.ok) {
-        setHecho(nuevoEstado);
-      }
+      if (res.ok) setHecho(nuevoEstado);
+      else setError('No se pudo guardar. Revisa tu conexión.');
     } finally {
       setCargando(false);
     }
@@ -69,82 +87,68 @@ export function RutinaCliente({ datos, fecha }: { datos: DatosRutina | null; fec
 
   return (
     <div className="space-y-5">
-      {/* Estado y acción */}
-      <Tarjeta className="border border-slate-200/60 p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Tu nivel asignado
-              </span>
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 mt-0.5">{nivelNombre}</h2>
-            {datos.template.days_per_week && (
-              <p className="text-sm text-slate-500 mt-0.5">
-                Objetivo: <strong>{datos.template.days_per_week} días</strong> a la semana
-              </p>
-            )}
-          </div>
-
-          <Boton
-            variante={hecho ? 'secundario' : 'primario'}
-            onClick={toggleMarcar}
-            cargando={cargando}
-            className="w-full sm:w-auto"
-          >
-            {hecho ? (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <span>Rutina de hoy completada ✓</span>
-              </>
-            ) : (
-              <>
-                <Circle className="h-5 w-5" />
-                <span>Marcar rutina como hecha</span>
-              </>
-            )}
-          </Boton>
+      {/* Nivel y días */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <p className="text-3xl" aria-hidden>{nivel.emoji}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Tu nivel</p>
+          <p className="text-lg font-extrabold text-slate-900">{nivel.nombre}</p>
         </div>
-      </Tarjeta>
+        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <p className="text-3xl" aria-hidden>📅</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Meta</p>
+          <p className="text-lg font-extrabold text-slate-900">{dias ? `${dias} días / semana` : 'Cada semana'}</p>
+        </div>
+      </div>
 
-      {/* Lista de ejercicios */}
+      {/* Botón grande para marcar el día */}
+      <button
+        type="button"
+        onClick={toggleMarcar}
+        disabled={cargando}
+        aria-pressed={hecho}
+        className={`flex w-full items-center gap-4 rounded-3xl p-5 text-left shadow-md transition-all active:scale-[0.98] ${
+          hecho ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' : 'bg-white text-slate-900 ring-2 ring-dashed ring-orange-300 hover:ring-orange-400'
+        }`}
+      >
+        <span aria-hidden className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ${hecho ? 'bg-white/25' : 'bg-orange-100'}`}>
+          {cargando ? <Loader2 className="h-7 w-7 animate-spin" /> : hecho ? '🏆' : '👟'}
+        </span>
+        <span>
+          <span className="block text-lg font-extrabold">{hecho ? '¡Rutina de hoy hecha!' : 'Toca cuando termines la rutina'}</span>
+          <span className={`block text-sm ${hecho ? 'text-white/90' : 'text-slate-500'}`}>
+            {hecho ? 'Toca de nuevo si te equivocaste' : 'Así Camilo ve tu avance'}
+          </span>
+        </span>
+      </button>
+      {error && <Aviso tipo="error">{error}</Aviso>}
+
+      {/* Ejercicios */}
       <div className="space-y-3">
-        <h3 className="text-base font-bold text-slate-900">Ejercicios de la rutina</h3>
-        {ejercicios.map((ej, i) => (
-          <Tarjeta key={i} className="flex items-start gap-3.5 border border-slate-100">
-            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
-              {i + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-900 leading-snug">{ej.nombre}</p>
-              {ej.descripcion && (
-                <p className="text-sm text-slate-500 mt-0.5">{ej.descripcion}</p>
-              )}
-
-              <div className="flex flex-wrap gap-2 mt-2">
-                {ej.series && (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                    <RefreshCw className="h-3 w-3 text-slate-500" /> {ej.series} series
-                  </span>
-                )}
-                {ej.repeticiones && (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                    <Flame className="h-3 w-3 text-emerald-500" /> {ej.repeticiones} reps
-                  </span>
-                )}
-                {ej.minutos && (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
-                    <Timer className="h-3 w-3 text-sky-500" />
-                    {ej.minutos < 1
-                      ? `${Math.round(ej.minutos * 60)} seg`
-                      : `${ej.minutos} min`}
-                  </span>
-                )}
+        <h2 className="text-lg font-extrabold text-slate-900">💪 Ejercicios</h2>
+        <ol className="grid gap-3 md:grid-cols-2">
+          {ejercicios.map((ej, i) => (
+            <li key={i} className="flex items-center gap-3.5 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+              <span aria-hidden className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl ${COLORES[i % COLORES.length]}`}>
+                {emojiEjercicio(ej.nombre)}
+                <span className="absolute -left-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">{i + 1}</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold leading-snug text-slate-900">{ej.nombre}</p>
+                {ej.descripcion && <p className="text-sm text-slate-500">{ej.descripcion}</p>}
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {ej.series ? <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-800">🔁 {ej.series} series</span> : null}
+                  {ej.repeticiones ? <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-800">🔥 {ej.repeticiones} veces</span> : null}
+                  {ej.minutos ? (
+                    <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-800">
+                      ⏱️ {ej.minutos < 1 ? `${Math.round(ej.minutos * 60)} seg` : `${ej.minutos} min`}
+                    </span>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </Tarjeta>
-        ))}
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );

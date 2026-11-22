@@ -1,44 +1,51 @@
 'use client';
 
 import { useState } from 'react';
-import { Camera, ChevronDown, Check, Minus, X } from 'lucide-react';
-import { Boton, Tarjeta } from './ui';
+import { Camera, Check, Clock, Loader2, MessageSquarePlus } from 'lucide-react';
 import type { EstadoFoodLog } from '@/lib/nutricion/types';
+import { estiloTiempo } from './visual';
 
 interface Props {
   itemId: string;
+  tiempoClave: string;
   tiempo: string;
   hora: string;
   platoNombre: string;
   medidaCasera?: string;
   calorias?: number;
+  fotoPlato?: string | null;
+  esSiguiente?: boolean;
   estadoActual: EstadoFoodLog | null;
   onMarcar: (estado: EstadoFoodLog, nota?: string) => Promise<void>;
   onFoto: (archivo: File) => Promise<void>;
   fotoSubida?: boolean;
 }
 
-const ESTADOS: { id: EstadoFoodLog; texto: string; icono: typeof Check; color: string }[] = [
-  { id: 'cumpli', texto: 'Lo cumplí', icono: Check, color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  { id: 'a_medias', texto: 'A medias', icono: Minus, color: 'bg-amber-100 text-amber-800 border-amber-300' },
-  { id: 'no', texto: 'No lo comí', icono: X, color: 'bg-red-100 text-red-800 border-red-300' },
+const ESTADOS: { id: EstadoFoodLog; emoji: string; texto: string; activo: string }[] = [
+  { id: 'cumpli', emoji: '✅', texto: 'Lo comí', activo: 'bg-emerald-500 text-white ring-emerald-500' },
+  { id: 'a_medias', emoji: '🌗', texto: 'A medias', activo: 'bg-amber-400 text-amber-950 ring-amber-400' },
+  { id: 'no', emoji: '❌', texto: 'No', activo: 'bg-rose-500 text-white ring-rose-500' },
 ];
 
-export function TarjetaComida({ itemId, tiempo, hora, platoNombre, medidaCasera, calorias, estadoActual, onMarcar, onFoto, fotoSubida }: Props) {
-  const [abierto, setAbierto] = useState(false);
+export function TarjetaComida({
+  tiempoClave, tiempo, hora, platoNombre, medidaCasera, calorias, fotoPlato, esSiguiente,
+  estadoActual, onMarcar, onFoto, fotoSubida,
+}: Props) {
   const [nota, setNota] = useState('');
+  const [verNota, setVerNota] = useState(false);
   const [cargando, setCargando] = useState<EstadoFoodLog | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null);
-
-  const estadoInfo = ESTADOS.find(e => e.id === estadoActual);
+  const estilo = estiloTiempo(tiempoClave);
+  const hecha = estadoActual === 'cumpli';
 
   const marcar = async (estado: EstadoFoodLog) => {
     setCargando(estado);
     setAviso(null);
     try {
       await onMarcar(estado, nota || undefined);
-      setAbierto(false);
+      if (estado === 'cumpli') setAviso({ texto: '¡Bien hecho! 🎉', error: false });
+      setVerNota(false);
     } catch (err) {
       setAviso({ texto: err instanceof Error ? err.message : 'No se pudo guardar.', error: true });
     } finally {
@@ -54,7 +61,7 @@ export function TarjetaComida({ itemId, tiempo, hora, platoNombre, medidaCasera,
     setAviso(null);
     try {
       await onFoto(archivo);
-      setAviso({ texto: 'Foto recibida', error: false });
+      setAviso({ texto: '📸 Foto enviada a Camilo', error: false });
     } catch (err) {
       setAviso({ texto: err instanceof Error ? err.message : 'No se pudo subir la foto.', error: true });
     } finally {
@@ -63,61 +70,105 @@ export function TarjetaComida({ itemId, tiempo, hora, platoNombre, medidaCasera,
   };
 
   return (
-    <Tarjeta className="border border-slate-100">
-      <button className="flex w-full items-start gap-3 text-left" onClick={() => setAbierto(a => !a)}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{tiempo}</span>
-            <span className="text-xs text-slate-400">{hora}</span>
-            {estadoInfo && (
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${estadoInfo.color}`}>
-                {estadoInfo.texto}
+    <article
+      className={`overflow-hidden rounded-3xl bg-white shadow-sm transition-shadow ${
+        esSiguiente ? 'shadow-lg shadow-emerald-900/10 ring-2 ring-emerald-400' : hecha ? 'ring-2 ring-emerald-200' : 'ring-1 ring-slate-100'
+      }`}
+    >
+      <div className="flex gap-3 p-3 md:gap-4 md:p-4">
+        {/* Imagen del plato o ilustración del tiempo de comida */}
+        <div className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${estilo.fondo} md:h-28 md:w-28`}>
+          {fotoPlato ? (
+            // eslint-disable-next-line @next/next/no-img-element -- foto pública del plato en Supabase Storage
+            <img src={fotoPlato} alt={platoNombre} className="h-full w-full object-cover" loading="lazy" />
+          ) : (
+            <span aria-hidden className="flex h-full w-full items-center justify-center text-5xl drop-shadow-sm">{estilo.emoji}</span>
+          )}
+          {hecha && (
+            <span className="absolute inset-0 flex items-center justify-center bg-emerald-600/55">
+              <Check className="h-10 w-10 text-white" strokeWidth={3} aria-label="Comida cumplida" />
+            </span>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${estilo.suave} ${estilo.texto}`}>
+              {estilo.emoji} {tiempo}
+            </span>
+            {hora && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+                <Clock className="h-3.5 w-3.5" aria-hidden /> {hora}
               </span>
             )}
-            {fotoSubida && <span className="text-xs text-emerald-600 font-medium">📷 foto enviada</span>}
+            {esSiguiente && !estadoActual && (
+              <span className="animate-pulse rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">Ahora</span>
+            )}
           </div>
-          <p className="mt-0.5 font-semibold text-slate-900 leading-snug">{platoNombre}</p>
-          {medidaCasera && <p className="text-sm text-slate-500">{medidaCasera}</p>}
-          {calorias && <p className="text-xs text-slate-400">{calorias} kcal</p>}
+          <h3 className="mt-1 text-base font-bold leading-snug text-slate-900 md:text-lg">{platoNombre}</h3>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {[medidaCasera, calorias ? `${calorias} kcal` : null].filter(Boolean).join(' · ')}
+          </p>
+          {fotoSubida && <p className="mt-1 text-xs font-semibold text-emerald-700">📸 Foto enviada</p>}
         </div>
-        <ChevronDown className={`h-5 w-5 text-slate-400 mt-0.5 flex-shrink-0 transition-transform ${abierto ? 'rotate-180' : ''}`} />
-      </button>
+      </div>
 
-      {abierto && (
-        <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {ESTADOS.map(({ id, texto, icono: Icono }) => (
-              <button
-                key={id}
-                onClick={() => marcar(id)}
-                disabled={cargando !== null}
-                className={`flex flex-col items-center gap-1 rounded-xl border-2 p-2.5 text-xs font-semibold transition-colors ${estadoActual === id ? ESTADOS.find(e => e.id === id)!.color + ' border-current' : 'border-slate-200 text-slate-600 hover:border-emerald-300'}`}
-              >
-                {cargando === id ? '...' : <Icono className="h-4 w-4" />}
-                {texto}
-              </button>
-            ))}
-          </div>
+      {/* Acciones a un toque */}
+      <div className="grid grid-cols-3 gap-2 px-3 pb-3 md:px-4">
+        {ESTADOS.map(e => {
+          const activo = estadoActual === e.id;
+          return (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => marcar(e.id)}
+              disabled={cargando !== null}
+              aria-pressed={activo}
+              className={`flex min-h-12 items-center justify-center gap-1 whitespace-nowrap rounded-2xl px-1.5 text-[13px] font-bold md:text-sm ring-1 transition-all active:scale-95 ${
+                activo ? e.activo : 'bg-slate-50 text-slate-700 ring-slate-200 hover:bg-white'
+              }`}
+            >
+              {cargando === e.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <span aria-hidden>{e.emoji}</span>}
+              {e.texto}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex border-t border-slate-100 text-sm font-semibold">
+        <label className={`flex flex-1 items-center justify-center gap-2 py-3 text-emerald-700 ${subiendo ? 'opacity-60' : 'cursor-pointer hover:bg-emerald-50'}`}>
+          {subiendo ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Camera className="h-4 w-4" aria-hidden />}
+          {subiendo ? 'Subiendo…' : fotoSubida ? 'Cambiar foto' : 'Foto de mi plato'}
+          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={subirFoto} disabled={subiendo} />
+        </label>
+        <button
+          type="button"
+          onClick={() => setVerNota(v => !v)}
+          className="flex flex-1 items-center justify-center gap-2 border-l border-slate-100 py-3 text-slate-600 hover:bg-slate-50"
+          aria-expanded={verNota}
+        >
+          <MessageSquarePlus className="h-4 w-4" aria-hidden /> Nota
+        </button>
+      </div>
+
+      {verNota && (
+        <div className="border-t border-slate-100 p-3">
           <textarea
-            placeholder="Nota opcional (ej. comí menos arroz)"
+            placeholder="Ej.: comí menos arroz. Luego toca cómo te fue."
             value={nota}
             onChange={e => setNota(e.target.value)}
             maxLength={500}
             rows={2}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/30 resize-none"
+            className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
           />
-          <label className={`flex items-center gap-2 text-sm text-emerald-700 font-medium ${subiendo ? 'opacity-60' : 'cursor-pointer hover:underline'}`}>
-            <Camera className="h-4 w-4" />
-            {subiendo ? 'Subiendo foto...' : fotoSubida ? 'Cambiar foto' : 'Agregar foto'}
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={subirFoto} disabled={subiendo} />
-          </label>
         </div>
       )}
+
       {aviso && (
-        <p role="status" className={`mt-2 text-sm font-medium ${aviso.error ? 'text-red-600' : 'text-emerald-700'}`}>
+        <p role="status" className={`px-4 pb-3 text-sm font-semibold ${aviso.error ? 'text-rose-600' : 'text-emerald-700'}`}>
           {aviso.texto}
         </p>
       )}
-    </Tarjeta>
+    </article>
   );
 }

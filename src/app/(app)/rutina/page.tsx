@@ -2,6 +2,7 @@ import { hoyLima } from '@/lib/fecha';
 import { getToken } from '@/lib/token';
 import { DEMO_MODE, DEMO_RUTINA } from '@/lib/demo';
 import { RutinaCliente } from './rutina-cliente';
+import { Encabezado } from '@/components/visual';
 
 async function getRutina(token: string) {
   try {
@@ -33,15 +34,8 @@ export default async function RutinaPage() {
   const fechaIso = hoyLima();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Tu rutina de ejercicio
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Sigue los ejercicios indicados por Camilo para tu nivel.
-        </p>
-      </div>
+    <div className="space-y-5 md:space-y-6">
+      <Encabezado emoji="🏃" titulo="Tu rutina" subtitulo="Los ejercicios que Camilo eligió para tu nivel" tono="naranja" />
 
       <RutinaCliente datos={datos} fecha={fechaIso} />
     </div>

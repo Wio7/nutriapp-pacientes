@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const nombre = token ? await getNombre(token) : DEMO_PACIENTE.nombre;
 
   return (
-    <div className="min-h-screen bg-[#f3f9f5]">
+    <div className="fondo-app min-h-screen">
       {/* Navegación lateral en escritorio */}
       <NavLateral nombre={nombre} />
 
@@ -33,14 +33,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <div className="md:pl-56">
         <header className="sticky top-0 z-20 border-b border-slate-200/60 bg-white/80 backdrop-blur-md px-4 py-3 md:hidden flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-700 text-white font-bold text-sm">
-              N
+            <span aria-hidden className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-lg shadow-sm">
+              🥗
             </span>
-            <span className="font-bold text-slate-900">NutriApp</span>
+            <span className="font-extrabold text-slate-900">NutriApp</span>
           </div>
           {nombre && (
-            <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-              {nombre.split(' ')[0]}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 px-3 py-1 text-sm font-bold text-orange-900">
+              👋 {nombre.split(' ')[0]}
             </span>
           )}
         </header>
